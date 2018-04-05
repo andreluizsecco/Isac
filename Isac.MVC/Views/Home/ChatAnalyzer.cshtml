@@ -1,0 +1,32 @@
+﻿@{
+    ViewData["Title"] = "Isac - Chat Analyzer";
+}
+<div align="center">
+    <h1>Isac - Chat Analyzer</h1><br /><br />
+    <div style="float:left">
+        <h2>Sentiment API</h2><br /><br />
+        <img src="~/images/sentiment/@ViewBag.Emoticon" width="300" />
+        <br /><br />
+        <h1 style="color:@ViewBag.Color">@ViewBag.Score%</h1>
+    </div>
+    <div style="float: right; text-align:left">
+        <h2>Languages</h2><br /><br />
+        <table cellpadding="10">
+            <tbody>
+                @foreach (var item in (List<Isac.MVC.Models.ChatLanguageSummary>)ViewBag.Languages)
+                {
+                    <tr>
+                        <td><img src="~/images/flags/@(item.Name).png" width="50" />&nbsp;&nbsp;<br /></td>
+                        <td><span style="font-weight: bold; font-size: 32pt">@(item.Messages)</span><span style="font-size: 20pt"> Mensagens</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+<script>
+    window.onload = 
+        setInterval(function(){
+            window.location = window.location;
+        }, 5000);
+</script>
