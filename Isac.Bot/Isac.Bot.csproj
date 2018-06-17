@@ -205,6 +205,7 @@
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\Audio.cs" />
     <Compile Include="Services\DHT11.cs" />
     <Compile Include="Services\IoTHub.cs" />
     <Compile Include="Services\Messages.cs" />
@@ -223,6 +224,12 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\PublishProfiles\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Isac.Bot.Speech\Isac.Bot.Speech.csproj">
+      <Project>{e64b371f-b0b1-4e53-9de1-70c2d5b6c527}</Project>
+      <Name>Isac.Bot.Speech</Name>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

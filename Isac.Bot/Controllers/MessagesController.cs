@@ -1,4 +1,7 @@
-﻿using System.Net;
+﻿using System;
+using System.Linq;
+using System.Net;
+using Isac.Bot.Speech;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Http;
@@ -17,19 +20,34 @@ namespace Isac.Bot
         /// </summary>
         public async Task<HttpResponseMessage> Post([FromBody]Activity activity)
         {
-            if (activity.Type == ActivityTypes.Message)
+            // Bing Speech (Speech to text) aceita apenas o formato .WAV
+            var audioAttachment = activity.Attachments?.FirstOrDefault(a => a.ContentType.Equals("audio/wav"));
+            if (audioAttachment != null)
             {
                 Task.Run(() =>
                 {
-                    Messages.Save(activity.Text);
-                    Conversation.SendAsync(activity, () => new Dialogs.RootDialog());
+                    var connector = new ConnectorClient(new Uri(activity.ServiceUrl));
+                    var stream = new Audio().GetAudioStream(connector, audioAttachment).Result;
+                    activity.Text = new SpeechService().GetTextFromAudioAsync(stream).Result;
+                    SendMessage(activity);
                 });
             }
+            else if (activity.Type == ActivityTypes.Message)
+                SendMessage(activity);
             else
                 HandleSystemMessage(activity);
 
             var response = Request.CreateResponse(HttpStatusCode.OK);
             return response;
+        }
+
+        private async void SendMessage(Activity activity)
+        {
+            Task.Run(() =>
+            {
+                Messages.Save(activity.Text);
+                Conversation.SendAsync(activity, () => new Dialogs.RootDialog());
+            });
         }
 
         private Activity HandleSystemMessage(Activity message)
