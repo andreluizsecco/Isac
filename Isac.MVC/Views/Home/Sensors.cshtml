@@ -4,38 +4,49 @@
 <div align="center">
     <h1>@ViewData["Title"]</h1>
 </div>
+<h3>IP Dispositivo:&nbsp;<label id="senderLabel"></label></h3>
+<h3>Última Leitura:&nbsp;<label id="lastReadLabel"></label></h3>
+<br />
 <h1>Temperatura:&nbsp;<label id="temperatureLabel"></label></h1>
 <br />
 <canvas id="temperatureChart" width="1000" height="230"></canvas>
 <h1>Umidade:&nbsp;<label id="humidityLabel"></label></h1>
 <br />
 <canvas id="humidityChart" width="1000" height="230"></canvas>
-    <script src="/lib/jquery/dist/jquery.js"></script>
-    <script type="text/javascript" src="/js/signalr.js"></script>
-    <script type="text/javascript" src="/js/smothiecharts.js"></script>
-    <!--Add script to update the page and send messages.-->
-    <script type="text/javascript">
-        var temperatureRegistries = new TimeSeries();
-        var humidityRegistries = new TimeSeries();
+<script src="/lib/jquery/dist/jquery.js"></script>
+<script type="text/javascript" src="/js/signalr.js"></script>
+<script type="text/javascript" src="/js/smothiecharts.js"></script>
+<!--Add script to update the page and send messages.-->
+<script type="text/javascript">
+    var temperatureRegistries = new TimeSeries();
+    var humidityRegistries = new TimeSeries();
 
-        document.addEventListener('DOMContentLoaded', function () {
-            createChartLines();
-            // Start the connection.
-            startConnection('/sensors', function (connection) {
-                // Create a function that the hub can call to broadcast messages.
-                connection.on('sensorsData', function (temperature, humidity) {
-                    $("#temperatureLabel").text(temperature + " ºC");
-                    // Insere o valor usado no registro de séries
-                    temperatureRegistries.append(new Date().getTime(), temperature);
-                    $("#humidityLabel").text(humidity + " %");
-                    // Insere o valor usado no registro de séries
-                    humidityRegistries.append(new Date().getTime(), humidity);
-                });
-            })
-            .then(function (connection) {
+    document.addEventListener('DOMContentLoaded', function () {
+        createChartLines();
+        // Start the connection.
+        var connection = new signalR.HubConnectionBuilder()
+            .withUrl('/sensors')
+            .build();
+
+        //startConnection('/sensors', function (connection) {
+        // Create a function that the hub can call to broadcast messages.
+        connection.on('sensorsData', function (date, sender, temperature, humidity) {
+            $("#senderLabel").text(sender);
+            $("#lastReadLabel").text(date);
+            $("#temperatureLabel").text(temperature + " ºC");
+            // Insere o valor usado no registro de séries
+            temperatureRegistries.append(new Date().getTime(), temperature);
+            $("#humidityLabel").text(humidity + " %");
+            // Insere o valor usado no registro de séries
+            humidityRegistries.append(new Date().getTime(), humidity);
+        });
+        //})
+        connection.start()
+            .then(function () {
                 console.log('connection started');
                 // Call the Send method on the hub.
-                setInterval(function(){
+                setInterval(function () {
+                    console.log(connection);
                     connection.invoke('send');
                 }, 1000);
 
@@ -43,52 +54,52 @@
             .catch(error => {
                 console.error(error.message);
             });
-            // Starts a connection with transport fallback - if the connection cannot be started using
-            // the webSockets transport the function will fallback to the serverSentEvents transport and
-            // if this does not work it will try longPolling. If the connection cannot be started using
-            // any of the available transports the function will return a rejected Promise.
-            function startConnection(url, configureConnection) {
-                return function start(transport) {
-                    console.log(`Starting connection using ${signalR.TransportType[transport]} transport`)
-                    var connection = new signalR.HubConnection(url, { transport: transport });
-                    if (configureConnection && typeof configureConnection === 'function') {
-                        configureConnection(connection);
-                    }
-                    return connection.start()
-                        .then(function () {
-                            return connection;
-                        })
-                        .catch(function (error) {
-                            console.log(`Cannot start the connection use ${signalR.TransportType[transport]} transport. ${error.message}`);
-                            if (transport !== signalR.TransportType.LongPolling) {
-                                return start(transport + 1);
-                            }
-                            return Promise.reject(error);
-                        });
-                }(signalR.TransportType.WebSockets);
-            }
-        });
-
-        function createChartLines() {
-            var temperatureChart = new SmoothieChart({ millisPerPixel: 30, maxValue: 60, minValue: -10, scaleSmoothing: 0.100, grid: { millisPerLine: 3000 } });
-            var humidityChart = new SmoothieChart({ millisPerPixel: 30, maxValue: 100, minValue: 0, grid: { millisPerLine: 3000 } });
-
-            var temperatureOptions = {
-                strokeStyle: 'rgba(255, 255, 0, 1)',
-                fillStyle: 'rgba(255, 0, 0, 1)',
-                lineWidth: 1
-            };
-
-            var humidityOptions = {
-                strokeStyle: 'rgba(0, 255, 255, 1)',
-                fillStyle: 'rgba(0, 255, 255, 1)',
-                lineWidth: 1
-            };
-
-            temperatureChart.addTimeSeries(temperatureRegistries, temperatureOptions);
-            humidityChart.addTimeSeries(humidityRegistries, humidityOptions);
-
-            temperatureChart.streamTo($("#temperatureChart").get(0), 1000);
-            humidityChart.streamTo($("#humidityChart").get(0), 1000);
+        // Starts a connection with transport fallback - if the connection cannot be started using
+        // the webSockets transport the function will fallback to the serverSentEvents transport and
+        // if this does not work it will try longPolling. If the connection cannot be started using
+        // any of the available transports the function will return a rejected Promise.
+        function startConnection(url, configureConnection) {
+            return function start(transport) {
+                console.log(`Starting connection using ${signalR.TransportType[transport]} transport`)
+                var connection = new signalR.HubConnection(url, { transport: transport });
+                if (configureConnection && typeof configureConnection === 'function') {
+                    configureConnection(connection);
+                }
+                return connection.start()
+                    .then(function () {
+                        return connection;
+                    })
+                    .catch(function (error) {
+                        console.log(`Cannot start the connection use ${signalR.TransportType[transport]} transport. ${error.message}`);
+                        if (transport !== signalR.TransportType.LongPolling) {
+                            return start(transport + 1);
+                        }
+                        return Promise.reject(error);
+                    });
+            }(signalR.TransportType.WebSockets);
         }
-    </script>
+    });
+
+    function createChartLines() {
+        var temperatureChart = new SmoothieChart({ millisPerPixel: 30, maxValue: 60, minValue: -10, scaleSmoothing: 0.100, grid: { millisPerLine: 3000 } });
+        var humidityChart = new SmoothieChart({ millisPerPixel: 30, maxValue: 100, minValue: 0, grid: { millisPerLine: 3000 } });
+
+        var temperatureOptions = {
+            strokeStyle: 'rgba(255, 255, 0, 1)',
+            fillStyle: 'rgba(255, 0, 0, 1)',
+            lineWidth: 1
+        };
+
+        var humidityOptions = {
+            strokeStyle: 'rgba(0, 255, 255, 1)',
+            fillStyle: 'rgba(0, 255, 255, 1)',
+            lineWidth: 1
+        };
+
+        temperatureChart.addTimeSeries(temperatureRegistries, temperatureOptions);
+        humidityChart.addTimeSeries(humidityRegistries, humidityOptions);
+
+        temperatureChart.streamTo($("#temperatureChart").get(0), 1000);
+        humidityChart.streamTo($("#humidityChart").get(0), 1000);
+    }
+</script>

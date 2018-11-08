@@ -21,7 +21,7 @@ namespace Isac.Bot
         public async Task<HttpResponseMessage> Post([FromBody]Activity activity)
         {
             // Bing Speech (Speech to text) aceita apenas o formato .WAV
-            var audioAttachment = activity.Attachments?.FirstOrDefault(a => a.ContentType.Equals("audio/wav"));
+            var audioAttachment = activity.Attachments?.FirstOrDefault(a => a.ContentType.Equals("audio/wav") || a.ContentType.Equals("audio/ogg"));
             if (audioAttachment != null)
             {
                 Task.Run(() =>

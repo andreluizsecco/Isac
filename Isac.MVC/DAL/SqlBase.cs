@@ -40,7 +40,8 @@ namespace Isac.MVC.DAL
                     conn.Open();
                     using (SqlCommand cmd = new SqlCommand(sql, conn))
                     {
-                        cmd.Parameters.AddRange(parameters);
+                        if (parameters != null)
+                            cmd.Parameters.AddRange(parameters);
                         cmd.CommandType = type;
                         cmd.ExecuteNonQuery();
                     }

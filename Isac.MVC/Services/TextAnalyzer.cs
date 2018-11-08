@@ -1,19 +1,35 @@
 ﻿using Microsoft.Azure.CognitiveServices.Language.TextAnalytics;
 using Microsoft.Azure.CognitiveServices.Language.TextAnalytics.Models;
+using Microsoft.Rest;
 using System.Collections.Generic;
+using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Isac.MVC.Services
 {
     public class TextAnalyzer
     {
-        private readonly ITextAnalyticsAPI client;
+        private const string SubscriptionKey = "YourKey";
+
+        class ApiKeyServiceClientCredentials : ServiceClientCredentials
+        {
+            public override Task ProcessHttpRequestAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                request.Headers.Add("Ocp-Apim-Subscription-Key", SubscriptionKey);
+                return base.ProcessHttpRequestAsync(request, cancellationToken);
+            }
+        }
+
+        private readonly ITextAnalyticsClient client;
 
         public TextAnalyzer()
         {
-            client = new TextAnalyticsAPI();
-            client.AzureRegion = AzureRegions.Eastus2;
-            client.SubscriptionKey = "YourSubscriptionKey";
+
+            client = new TextAnalyticsClient(new ApiKeyServiceClientCredentials())
+            {
+                Endpoint = "https://eastus2.api.cognitive.microsoft.com"
+            };
         }
 
         public async Task<string> GetMessageLanguageAsync(string message)

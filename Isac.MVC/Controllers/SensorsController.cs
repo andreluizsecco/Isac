@@ -8,10 +8,10 @@ namespace Isac.MVC.Controllers
     {
         [HttpPost]
         [Route("api/Sensors/DHT11Data")]
-        public void DHT11Data(Guid token, decimal temperature, decimal humidity)
+        public void DHT11Data(Guid token, string sender, decimal temperature, decimal humidity)
         {
             if (Guid.Parse("YourToken").Equals(token))
-                Commands.AddDht11SensorData(temperature, humidity);
+                Commands.AddDht11SensorData(sender, temperature, humidity);
         }
     }
 }

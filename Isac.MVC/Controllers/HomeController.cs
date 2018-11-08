@@ -5,17 +5,11 @@ namespace Isac.MVC.Controllers
 {
     public class HomeController : Controller
     {
-        public IActionResult Index()
-        {
-            return View();
-        }
+        public IActionResult Index() =>
+            View();
 
-        public IActionResult Sensors()
-        {
-            ViewData["Message"] = "Your application description page.";
-
-            return View();
-        }
+        public IActionResult Sensors() =>
+            View();
 
         public IActionResult ChatAnalyzer()
         {
@@ -43,6 +37,12 @@ namespace Isac.MVC.Controllers
 
             }
             return View();
+        }
+
+        public IActionResult ClearMessages()
+        {
+            Commands.ClearMessages();
+            return RedirectToAction("ChatAnalyzer");
         }
     }
 }
