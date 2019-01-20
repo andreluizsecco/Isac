@@ -8,23 +8,31 @@ namespace Isac.Bot.Speech
 {
     public class SpeechService
     {
+        private readonly Authentication _auth;
+
+        public SpeechService() =>
+            _auth = new Authentication("YourSpeechKey");
+
         /// <summary>
         /// Gets text from an audio stream.
         /// </summary>
         /// <param name="audiostream"></param>
         /// <returns>Transcribed text. </returns>
-        public async Task<string> GetTextFromAudioAsync(Stream audiostream)
+        public async Task<string> GetTextFromAudioAsync(Stream audiostream, string audioType)
         {
-            var requestUri = @"	https://speech.platform.bing.com/speech/recognition/interactive/cognitiveservices/v1?language=pt-BR&format=simple";
+            var requestUri = @"https://westus.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1?language=pt-BR&format=simple";
 
             using (var client = new HttpClient())
             {
-                var token = Authentication.Instance.GetAccessToken();
+                var token = _auth.GetAccessToken();
                 client.DefaultRequestHeaders.Add("Authorization", "Bearer " + token);
 
                 using (var binaryContent = new ByteArrayContent(StreamToBytes(audiostream)))
                 {
-                    binaryContent.Headers.TryAddWithoutValidation("content-type", "audio/wav; codec=\"audio/pcm\"; samplerate=16000");
+                    if (audioType.Equals("audio/wav"))
+                        binaryContent.Headers.TryAddWithoutValidation("content-type", "audio/wav; codec=\"audio/pcm\"; samplerate=16000");
+                    else if (audioType.Equals("audio/wav"))
+                        binaryContent.Headers.TryAddWithoutValidation("content-type", "audio/ogg; codecs=opus");
 
                     var response = await client.PostAsync(requestUri, binaryContent);
                     if (response.StatusCode != System.Net.HttpStatusCode.OK)

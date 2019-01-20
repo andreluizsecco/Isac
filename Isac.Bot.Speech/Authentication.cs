@@ -1,77 +1,73 @@
 ﻿using System;
 using System.Net.Http;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Isac.Bot.Speech
 {
     public sealed class Authentication
     {
-        // The token has an expiry time of 10 minutes https://www.microsoft.com/cognitive-services/en-us/Speech-api/documentation/API-Reference-REST/BingVoiceRecognition
-        private const int TokenExpiryInSeconds = 600;
+        // A URL deverá ser alterada, caso não tenha criado seu serviço de speech no Azure na região West US
+        public readonly string _fetchTokenUri = "https://westus.api.cognitive.microsoft.com/sts/v1.0/issueToken";
+        private readonly string _subscriptionKey;
+        private readonly Timer _accessTokenRenewer;
+        private string _token;
 
-        private static readonly object LockObject;
-        private static readonly string ApiKey;
-        private string token;
-        private Timer timer;
+        //Access token expires every 10 minutes. Renew it every 9 minutes.
+        private const int RefreshTokenDuration = 9;
 
-        static Authentication()
+        public Authentication(string subscriptionKey)
         {
-            LockObject = new object();
-            ApiKey = "YourKey";
+            _subscriptionKey = subscriptionKey;
+            _token = FetchToken(_fetchTokenUri, subscriptionKey).Result;
+
+            // renew the token on set duration.
+            _accessTokenRenewer = new Timer(new TimerCallback(OnTokenExpiredCallback),
+                                            this,
+                                            TimeSpan.FromMinutes(RefreshTokenDuration),
+                                            TimeSpan.FromMilliseconds(-1));
         }
 
-        private Authentication() { }
+        public string GetAccessToken() =>
+            _token;
 
-        public static Authentication Instance { get; } = new Authentication();
+        private void RenewAccessToken() =>
+            _token = FetchToken(_fetchTokenUri, _subscriptionKey).Result;
 
-        /// <summary>
-        /// Gets the current access token.
-        /// </summary>
-        /// <returns>Current access token</returns>
-        public string GetAccessToken()
+        private void OnTokenExpiredCallback(object stateInfo)
         {
-            // Token will be null first time the function is called.
-            if (this.token == null)
+            try
             {
-                lock (LockObject)
+                RenewAccessToken();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(string.Format("Failed renewing access token. Details: {0}", ex.Message));
+            }
+            finally
+            {
+                try
                 {
-                    // This condition will be true only once in the lifetime of the application
-                    if (this.token == null)
-                        this.RefreshToken();
+                    _accessTokenRenewer.Change(TimeSpan.FromMinutes(RefreshTokenDuration), TimeSpan.FromMilliseconds(-1));
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(string.Format("Failed to reschedule the timer to renew access token. Details: {0}", ex.Message));
                 }
             }
-
-            return this.token;
         }
 
-        /// <summary>
-        /// Issues a new AccessToken from the Speech Api
-        /// </summary>
-        /// This method couldn't be async because we are calling it inside of a lock.
-        /// <returns>AccessToken</returns>
-        private static string GetNewToken()
+        private async Task<string> FetchToken(string fetchUri, string subscriptionKey)
         {
             using (var client = new HttpClient())
             {
-                client.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", ApiKey);
-                var response = client.PostAsync("https://api.cognitive.microsoft.com/sts/v1.0/issueToken", null).Result;
-                return response.Content.ReadAsStringAsync().Result;
-            }
-        }
+                client.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", subscriptionKey);
+                UriBuilder uriBuilder = new UriBuilder(fetchUri);
 
-        /// <summary>
-        /// Refreshes the current token before it expires. This method will refresh the current access token.
-        /// It will also schedule itself to run again before the newly acquired token's expiry by one minute.
-        /// </summary>
-        private void RefreshToken()
-        {
-            this.token = GetNewToken();
-            this.timer?.Dispose();
-            this.timer = new Timer(
-                x => this.RefreshToken(),
-                null,
-                TimeSpan.FromSeconds(TokenExpiryInSeconds).Subtract(TimeSpan.FromMinutes(1)), // Specifies the delay before RefreshToken is invoked.
-                TimeSpan.FromMilliseconds(-1)); // Indicates that this function will only run once
+                var result = await client.PostAsync(uriBuilder.Uri.AbsoluteUri, null);
+                Console.WriteLine("Token Uri: {0}", uriBuilder.Uri.AbsoluteUri);
+                return await result.Content.ReadAsStringAsync();
+            }
         }
     }
 }

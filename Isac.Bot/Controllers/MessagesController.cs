@@ -20,20 +20,27 @@ namespace Isac.Bot
         /// </summary>
         public async Task<HttpResponseMessage> Post([FromBody]Activity activity)
         {
-            // Bing Speech (Speech to text) aceita apenas o formato .WAV
-            var audioAttachment = activity.Attachments?.FirstOrDefault(a => a.ContentType.Equals("audio/wav") || a.ContentType.Equals("audio/ogg"));
-            if (audioAttachment != null)
+            if (activity.Attachments.Count > 0)
             {
-                Task.Run(() =>
+                var audioAttachment = activity.Attachments?.FirstOrDefault(a => a.ContentType.Equals("audio/wav") || a.ContentType.Equals("audio/ogg"));
+                var connector = new ConnectorClient(new Uri(activity.ServiceUrl));
+                if (audioAttachment != null)
                 {
-                    var connector = new ConnectorClient(new Uri(activity.ServiceUrl));
-                    var stream = new Audio().GetAudioStream(connector, audioAttachment).Result;
-                    activity.Text = new SpeechService().GetTextFromAudioAsync(stream).Result;
-                    SendMessage(activity);
-                });
+                    Task.Run(() =>
+                    {
+                        var stream = new Audio().GetAudioStream(connector, audioAttachment).Result;
+                        activity.Text = new SpeechService().GetTextFromAudioAsync(stream, audioAttachment.ContentType).Result;
+                        SendMessage(activity);
+                    });
+                }
+                else
+                {
+                    var reply = activity.CreateReply($"Formato do áudio não suportado: {activity.Attachments?.FirstOrDefault().ContentType}");
+                    await connector.Conversations.ReplyToActivityAsync(reply);
+                }
             }
             else if (activity.Type == ActivityTypes.Message)
-                SendMessage(activity);
+                await SendMessage(activity);
             else
                 HandleSystemMessage(activity);
 
@@ -41,7 +48,7 @@ namespace Isac.Bot
             return response;
         }
 
-        private async void SendMessage(Activity activity)
+        private async Task SendMessage(Activity activity)
         {
             Task.Run(() =>
             {

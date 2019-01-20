@@ -1,6 +1,5 @@
 ﻿using Microsoft.Bot.Connector;
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -25,8 +24,6 @@ namespace Isac.Bot.Services
                 }
 
                 var stream = await httpClient.GetStreamAsync(uri);
-                if (audioAttachment.ContentType.Equals("audio/ogg"))
-                    return ConvertOggToWav(stream);
                 return stream;
             }
         }
@@ -42,39 +39,6 @@ namespace Isac.Bot.Services
             if (credentials != null)
                 return await credentials.GetTokenAsync();
             return null;
-        }
-
-        private Stream ConvertOggToWav(Stream stream)
-        {
-            var path = $@"{AppContext.BaseDirectory}Data\Audio\";
-            var name = Guid.NewGuid().ToString();
-
-            var source = path + name + ".ogg";
-            var destination = source.Replace("ogg", "wav");
-
-            Directory.CreateDirectory(path);
-
-            using (var ms = new MemoryStream())
-            {
-                stream.CopyTo(ms);
-                File.WriteAllBytes(source, ms.ToArray());
-            }
-
-            var bs = File.ReadAllBytes(source);
-            var psi = new ProcessStartInfo();
-            psi.FileName = $@"{AppContext.BaseDirectory}Tools\opusdec.exe";
-            psi.Arguments = $"--rate 16000 \"{source}\" \"{destination}\"";
-            psi.RedirectStandardOutput = true;
-            psi.RedirectStandardError = true;
-            psi.UseShellExecute = false;
-
-            var process = Process.Start(psi);
-            process.WaitForExit((int)TimeSpan.FromSeconds(60).TotalMilliseconds);
-            var bytes = File.ReadAllBytes(destination);
-
-            Directory.Delete(path, true);
-
-            return new MemoryStream(bytes);
         }
     }
 }
